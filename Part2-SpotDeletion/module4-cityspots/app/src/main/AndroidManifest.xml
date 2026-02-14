@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+=============================================================================
+CITY SPOTS - MÓDULO 4: HARDWARE & MAPS
+AndroidManifest.xml - Configuración de la aplicación
+=============================================================================
+Este archivo define:
+1. Permisos requeridos por la aplicación
+2. Características de hardware utilizadas
+3. Configuración de la API Key de Google Maps
+4. Declaración de componentes (Activities)
+=============================================================================
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+    ==========================================================================
+    PERMISOS DE LA APLICACIÓN
+    ==========================================================================
+    Los permisos en Android se dividen en dos categorías:
+    - Normales: Se otorgan automáticamente al instalar (ej: INTERNET)
+    - Peligrosos: Requieren aprobación explícita del usuario en runtime
+
+    Los permisos de CÁMARA y UBICACIÓN son "peligrosos" y requieren:
+    1. Declararlos aquí en el Manifest
+    2. Solicitarlos en runtime usando la API de permisos
+    ==========================================================================
+    -->
+
+    <!-- PERMISO DE CÁMARA -->
+    <!-- Necesario para acceder al hardware de la cámara -->
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- PERMISOS DE UBICACIÓN -->
+    <!--
+    ACCESS_FINE_LOCATION: Ubicación precisa (GPS) - ~10 metros de precisión
+    ACCESS_COARSE_LOCATION: Ubicación aproximada (WiFi/Cell) - ~100 metros
+    NOTA: Para solicitar FINE_LOCATION, también debes declarar COARSE_LOCATION
+    -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+    <!--
+    ==========================================================================
+    CARACTERÍSTICAS DE HARDWARE (FEATURES)
+    ==========================================================================
+    Declarar las características de hardware ayuda a Google Play a filtrar
+    dispositivos incompatibles. El atributo required="false" indica que la
+    app puede funcionar sin esa característica (graceful degradation).
+    ==========================================================================
+    -->
+
+    <!-- Característica de cámara - Requerida para funcionalidad principal -->
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="true" />
+
+    <!-- Autofocus de cámara - Opcional pero recomendado -->
+    <uses-feature
+        android:name="android.hardware.camera.autofocus"
+        android:required="false" />
+
+    <!-- GPS - Requerido para geolocalización precisa -->
+    <uses-feature
+        android:name="android.hardware.location.gps"
+        android:required="true" />
+
+    <!--
+    ==========================================================================
+    CONFIGURACIÓN DE LA APLICACIÓN
+    ==========================================================================
+    -->
+    <application
+        android:name=".CitySpotsApplication"
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.CitySpots">
+
+        <!--
+        ======================================================================
+        GOOGLE MAPS API KEY
+        ======================================================================
+        IMPORTANTE: Debes reemplazar "YOUR_API_KEY_HERE" con tu clave real
+        de la Google Cloud Console.
+
+        Pasos para obtener la API Key:
+        1. Ve a https://console.cloud.google.com/
+        2. Crea un proyecto nuevo o selecciona uno existente
+        3. Habilita "Maps SDK for Android" en APIs & Services
+        4. Ve a Credentials y crea una API Key
+        5. (Recomendado) Restringe la API Key a tu app:
+           - Restricción de aplicación: Apps de Android
+           - Nombre del paquete: com.curso.android.module4.cityspots
+           - Huella digital SHA-1: (obtener con keytool)
+
+        SEGURIDAD: En producción, considera usar:
+        - Secrets Gradle Plugin para no exponer la key en el código
+        - Restricciones de API Key en Cloud Console
+        ======================================================================
+        -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="${MAPS_API_KEY}" />
+
+        <!--
+        ======================================================================
+        ACTIVITY PRINCIPAL
+        ======================================================================
+        exported="true" es requerido para Activities con intent-filter
+        en Android 12+ (API 31+)
+        ======================================================================
+        -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:theme="@style/Theme.CitySpots">
+            <intent-filter>
+                <!-- Acción principal - punto de entrada de la app -->
+                <action android:name="android.intent.action.MAIN" />
+                <!-- Categoría launcher - aparece en el menú de apps -->
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+    </application>
+
+</manifest>
