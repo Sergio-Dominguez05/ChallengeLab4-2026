@@ -142,7 +142,6 @@ fun CameraScreen(
                 onNavigateBack() // Volver al mapa después de captura exitosa
             }
             false -> {
-                snackbarHostState.showSnackbar("Error al capturar la foto")
                 viewModel.clearCaptureResult()
             }
             null -> { /* Sin resultado pendiente */ }

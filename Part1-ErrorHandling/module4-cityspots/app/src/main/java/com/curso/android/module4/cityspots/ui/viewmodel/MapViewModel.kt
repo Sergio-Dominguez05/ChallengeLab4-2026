@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.curso.android.module4.cityspots.data.entity.SpotEntity
 import com.curso.android.module4.cityspots.repository.CreateSpotResult
 import com.curso.android.module4.cityspots.repository.SpotRepository
+import com.curso.android.module4.cityspots.utils.CameraUtils.CaptureError
 import com.google.android.gms.maps.model.LatLng
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -174,6 +175,11 @@ class MapViewModel(
                         _errorMessage.value = result.message
                         _captureResult.value = false
                     }
+
+                    is CreateSpotResult.PhotoCaptureFailed -> {
+                        _errorMessage.value = captureErrorMessage(result.error)
+                        _captureResult.value = false
+                    }
                 }
             } catch (e: Exception) {
                 _errorMessage.value = "Error al capturar: ${e.message}"
@@ -181,6 +187,28 @@ class MapViewModel(
             } finally {
                 _isLoading.value = false
             }
+        }
+    }
+
+    /**
+     * Convierte errores tipados de cámara en mensajes amigables para el usuario.
+     */
+    private fun captureErrorMessage(error: CaptureError): String {
+        return when (error) {
+            CaptureError.CameraClosed ->
+                "La cámara se cerró inesperadamente. Intenta abrirla de nuevo."
+
+            CaptureError.CaptureFailed ->
+                "No se pudo tomar la foto (fallo de la cámara). Intenta otra vez."
+
+            CaptureError.FileIoError ->
+                "No se pudo guardar la foto. Revisa almacenamiento y permisos."
+
+            is CaptureError.Unknown ->
+                "Error desconocido al capturar la foto.".let { base ->
+                    // Si hay mensaje, lo agregamos sin hacerlo demasiado técnico
+                    if (error.message.isNullOrBlank()) base else "$base (${error.message})"
+                }
         }
     }
 

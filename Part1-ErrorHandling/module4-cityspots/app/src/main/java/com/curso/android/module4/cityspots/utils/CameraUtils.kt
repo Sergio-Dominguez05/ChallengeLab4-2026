@@ -11,7 +11,6 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 
 /**
  * =============================================================================
@@ -40,6 +39,36 @@ import kotlin.coroutines.resumeWithException
  * =============================================================================
  */
 class CameraUtils(private val context: Context) {
+
+    /**
+     * =============================================================================
+     * CaptureError - Errores tipados para captura de foto
+     * =============================================================================
+     *
+     * Objetivo: Evitar errores genéricos y distinguir:
+     * - Cámara cerrada inesperadamente
+     * - Fallo de captura (hardware)
+     * - Error de File I/O (almacenamiento lleno / permisos / fallo escritura)
+     */
+    sealed class CaptureError {
+        /** Cámara se cerró mientras se intentaba capturar */
+        data object CameraClosed : CaptureError()
+
+        /** Fallo de captura por problema de cámara/hardware */
+        data object CaptureFailed : CaptureError()
+
+        /** Error guardando el archivo (I/O) */
+        data object FileIoError : CaptureError()
+
+        /** Cualquier otro error no clasificado */
+        data class Unknown(val message: String? = null) : CaptureError()
+    }
+
+    /** Resultado tipado para capturePhoto() */
+    sealed class CapturePhotoResult {
+        data class Success(val uri: Uri) : CapturePhotoResult()
+        data class Failure(val error: CaptureError) : CapturePhotoResult()
+    }
 
     // Formato para nombres de archivo únicos basados en timestamp
     private val fileNameFormat = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US)
@@ -83,7 +112,7 @@ class CameraUtils(private val context: Context) {
      * @return URI del archivo guardado
      * @throws ImageCaptureException si falla la captura
      */
-    suspend fun capturePhoto(imageCapture: ImageCapture): Uri {
+    suspend fun capturePhoto(imageCapture: ImageCapture): CapturePhotoResult {
         return suspendCancellableCoroutine { continuation ->
             // Crear archivo de destino
             val photoFile = createImageFile()
@@ -101,14 +130,16 @@ class CameraUtils(private val context: Context) {
                     override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
                         // Éxito: retornar URI del archivo
                         val savedUri = Uri.fromFile(photoFile)
-                        continuation.resume(savedUri)
+                        continuation.resume(CapturePhotoResult.Success(savedUri))
                     }
 
                     override fun onError(exception: ImageCaptureException) {
-                        // Error: propagar excepción
+                        // Error: devolver error tipado
                         // Limpiar archivo si se creó pero falló la escritura
                         photoFile.delete()
-                        continuation.resumeWithException(exception)
+                        continuation.resume(
+                            CapturePhotoResult.Failure(mapImageCaptureException(exception))
+                        )
                     }
                 }
             )
@@ -121,6 +152,20 @@ class CameraUtils(private val context: Context) {
                     photoFile.delete()
                 }
             }
+        }
+    }
+
+    /**
+     * Mapea los códigos de error de CameraX a nuestros errores tipados.
+     *
+     * Fuente: ImageCaptureException.imageCaptureError
+     */
+    private fun mapImageCaptureException(exception: ImageCaptureException): CaptureError {
+        return when (exception.imageCaptureError) {
+            ImageCapture.ERROR_CAMERA_CLOSED -> CaptureError.CameraClosed
+            ImageCapture.ERROR_CAPTURE_FAILED -> CaptureError.CaptureFailed
+            ImageCapture.ERROR_FILE_IO -> CaptureError.FileIoError
+            else -> CaptureError.Unknown(exception.message)
         }
     }
 
