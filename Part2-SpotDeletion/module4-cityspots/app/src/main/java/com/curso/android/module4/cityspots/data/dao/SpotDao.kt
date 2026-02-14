@@ -86,6 +86,20 @@ interface SpotDao {
     suspend fun getSpotCount(): Int
 
 
+    /**
+     * Elimina un spot por su ID
+     *
+     * CONCEPTO: DELETE query
+     * Retornamos la cantidad de filas afectadas para poder saber si realmente
+     * existía el registro.
+     *
+     * @param id ID del spot a eliminar
+     * @return número de filas eliminadas (0 si no existía)
+     */
+    @Query("DELETE FROM spots WHERE id = :id")
+    suspend fun deleteSpot(id: Long): Int
+
+
 
 
 }

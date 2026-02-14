@@ -94,6 +94,17 @@ class SpotRepository(
     }
 
 
+    /**
+     * Elimina un spot de la base de datos por su ID.
+     *
+     * @param id ID del spot
+     * @return número de filas eliminadas (0 si no existía)
+     */
+    private suspend fun deleteSpotFromDb(id: Long): Int {
+        return spotDao.deleteSpot(id)
+    }
+
+
 
     /**
      * Obtiene el número de spots para generar títulos secuenciales
@@ -228,6 +239,52 @@ class SpotRepository(
         // Retornar el spot con el ID generado
         return CreateSpotResult.Success(spot.copy(id = id))
     }
+
+    // =========================================================================
+    // ELIMINACIÓN (DB + Archivo)
+    // =========================================================================
+
+    /**
+     * Elimina un Spot y limpia su archivo de foto asociado.
+     *
+     * ORQUESTACIÓN:
+     * 1) Busca el spot para obtener imageUri
+     * 2) Elimina el registro de Room
+     * 3) Elimina el archivo en filesDir (si existe)
+     *
+     * @param id ID del spot a eliminar
+     * @return DeleteSpotResult con detalles del resultado
+     */
+    suspend fun deleteSpot(id: Long): DeleteSpotResult {
+        // 1) Obtener spot (para conocer el archivo asociado)
+        val spot = getSpotById(id) ?: return DeleteSpotResult.NotFound
+
+        // 2) Eliminar de la BD
+        val rows = deleteSpotFromDb(id)
+        if (rows <= 0) {
+            // Si por alguna razón no se eliminó, tratamos como no encontrado
+            return DeleteSpotResult.NotFound
+        }
+
+        // 3) Eliminar archivo asociado (edge case: puede no existir)
+        val uri = Uri.parse(spot.imageUri)
+        val existed = cameraUtils.imageExists(uri)
+        val deleted = if (existed) cameraUtils.deleteImage(uri) else false
+
+        return DeleteSpotResult.Success(fileExisted = existed, fileDeleted = deleted)
+    }
+}
+
+/**
+ * Resultado de eliminación de un Spot.
+ */
+sealed class DeleteSpotResult {
+    data class Success(
+        val fileExisted: Boolean,
+        val fileDeleted: Boolean
+    ) : DeleteSpotResult()
+
+    data object NotFound : DeleteSpotResult()
 }
 
 /**

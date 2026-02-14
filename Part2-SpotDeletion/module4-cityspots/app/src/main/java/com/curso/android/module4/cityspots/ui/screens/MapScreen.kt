@@ -15,11 +15,13 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -229,6 +231,8 @@ fun MapScreen(
          * - Las imágenes se cargan correctamente
          */
         var selectedSpot by remember { mutableStateOf<SpotEntity?>(null) }
+        // Spot pendiente de eliminación (para mostrar diálogo de confirmación)
+        var spotPendingDelete by remember { mutableStateOf<SpotEntity?>(null) }
 
         Box(
             modifier = Modifier
@@ -241,6 +245,7 @@ fun MapScreen(
                 userLocation = userLocation,
                 cameraPositionState = cameraPositionState,
                 onSpotClick = { spot -> selectedSpot = spot },
+                onSpotLongPress = { spot -> spotPendingDelete = spot },
                 onMapClick = { selectedSpot = null }
             )
 
@@ -258,6 +263,34 @@ fun MapScreen(
             if (isLoading) {
                 CircularProgressIndicator(
                     modifier = Modifier.align(Alignment.Center)
+                )
+            }
+
+            // Diálogo de confirmación para eliminar
+            spotPendingDelete?.let { spot ->
+                AlertDialog(
+                    onDismissRequest = { spotPendingDelete = null },
+                    title = { Text(text = "Eliminar spot") },
+                    text = { Text(text = "¿Estás seguro de que deseas eliminar \"${spot.title}\"?") },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                viewModel.deleteSpot(spot.id)
+                                // Cerrar diálogo y deseleccionar card si era el mismo spot
+                                spotPendingDelete = null
+                                if (selectedSpot?.id == spot.id) {
+                                    selectedSpot = null
+                                }
+                            }
+                        ) {
+                            Text("Eliminar")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { spotPendingDelete = null }) {
+                            Text("Cancelar")
+                        }
+                    }
                 )
             }
         }
@@ -292,6 +325,7 @@ private fun SpotMap(
     userLocation: LatLng?,
     cameraPositionState: CameraPositionState,
     onSpotClick: (SpotEntity) -> Unit,
+    onSpotLongPress: (SpotEntity) -> Unit,
     onMapClick: () -> Unit
 ) {
     /**
@@ -354,9 +388,13 @@ private fun SpotMap(
             Marker(
                 state = markerState,
                 title = spot.title,
+                snippet = "Mantén presionado para eliminar",
                 onClick = {
                     onSpotClick(spot)
-                    true // Consumir el click (no mostrar InfoWindow por defecto)
+                    false // Mostrar InfoWindow por defecto (necesario para long-press)
+                },
+                onInfoWindowLongClick = {
+                    onSpotLongPress(spot)
                 }
             )
         }

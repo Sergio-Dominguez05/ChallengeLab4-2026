@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.curso.android.module4.cityspots.data.entity.SpotEntity
 import com.curso.android.module4.cityspots.repository.CreateSpotResult
+import com.curso.android.module4.cityspots.repository.DeleteSpotResult
 import com.curso.android.module4.cityspots.repository.SpotRepository
 import com.curso.android.module4.cityspots.utils.CameraUtils.CaptureError
 import com.google.android.gms.maps.model.LatLng
@@ -224,6 +225,44 @@ class MapViewModel(
      */
     fun clearError() {
         _errorMessage.value = null
+    }
+
+
+    /**
+     * Elimina un spot por su ID.
+     *
+     * - Borra el registro en Room
+     * - Borra el archivo de foto asociado (si existe)
+     *
+     * La UI se actualiza automáticamente porque `spots` viene de un Flow de Room.
+     */
+    fun deleteSpot(spotId: Long) {
+        viewModelScope.launch {
+            try {
+                _isLoading.value = true
+
+                when (val result = repository.deleteSpot(spotId)) {
+                    is DeleteSpotResult.Success -> {
+                        // Mensaje amigable (aunque el archivo no exista, la eliminación de BD fue exitosa)
+                        _errorMessage.value = if (!result.fileExisted) {
+                            "Spot eliminado. (La foto ya no existía)"
+                        } else if (!result.fileDeleted) {
+                            "Spot eliminado. (No se pudo borrar la foto)"
+                        } else {
+                            "Spot eliminado correctamente."
+                        }
+                    }
+
+                    DeleteSpotResult.NotFound -> {
+                        _errorMessage.value = "No se encontró el spot para eliminar."
+                    }
+                }
+            } catch (e: Exception) {
+                _errorMessage.value = "Error eliminando spot: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
     }
 
 
